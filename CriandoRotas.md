@@ -161,3 +161,71 @@ if __name__ == '__main__':
 - Acessando `http://127.0.0.1:5000/redirecionar-para-produto/10` vai te levar para `/produto/10`.
 
 As variáveis de rota são uma parte essencial do Flask para criar URIs limpas, semânticas e flexíveis, permitindo que sua aplicação responda de forma diferente a URLs ligeiramente variadas.
+
+## 6. Modularizando rotas no Flask
+Para modularizar rotas no Flask, a melhor forma é utilizando *Blueprints*, um recurso nativo do próprio framework que funciona como uma "mini-aplicação". 
+Ele permite separar as rotas em múltiplos arquivos e pastas de acordo com o contexto do seu sistema (ex: usuários, produtos, autenticação).
+```bash
+meu_projeto/
+│
+├── app.py                 # Arquivo principal que inicia o servidor
+└── rotas/                 # Pasta contendo os módulos de rotas
+    ├── __init__.py        # Transforma a pasta em um pacote Python
+    ├── usuarios.py        # Módulo de rotas de usuários
+    └── produtos.py        # Módulo de rotas de produtos
+```
+
+Em vez de usar *@app.route()*, você importará a classe Blueprint e criará as rotas a partir dela.
+```python
+# rotas/usuarios.py
+from flask import Blueprint
+
+# Cria o Blueprint para o módulo de usuários
+usuarios_bp = Blueprint('usuarios', __name__)
+
+@usuarios_bp.route('/usuarios')
+def listar_usuarios():
+    return "Lista de Usuários"
+
+@usuarios_bp.route('/usuarios/<int:id>')
+def perfil_usuario(id):
+    return f"Perfil do usuário {id}"
+```
+```python
+# rotas/produtos.py
+from flask import Blueprint
+
+# Cria o Blueprint para o módulo de produtos
+produtos_bp = Blueprint('produtos', __name__)
+
+@produtos_bp.route('/produtos')
+def listar_produtos():
+    return "Lista de Produtos"
+```
+
+No seu arquivo principal (app.py), você importa as instâncias dos Blueprints criados e os registra na aplicação utilizando o método *register_blueprint()*.
+```python
+from flask import Flask
+from rotas.usuarios import usuarios_bp
+from rotas.produtos import produtos_bp
+
+app = Flask(__name__)
+
+# Registra os Blueprints na aplicação principal
+app.register_blueprint(usuarios_bp)
+app.register_blueprint(produtos_bp)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+```
+
+**Dica avançada:** Para deixar o código ainda mais limpo, você pode remover a repetição do caminho base (ex: tirar o */usuarios* de dentro de *usuarios.py*) e 
+definir um *url_prefix* diretamente no momento do registro no *app.py*. Dessa forma, qualquer rota criada dentro daquele Blueprint herdará o prefixo automaticamente:
+```python
+# No app.py, as rotas internas de usuarios_bp que eram '/' passam a responder por '/usuarios/'
+app.register_blueprint(usuarios_bp, url_prefix='/usuarios')
+app.register_blueprint(produtos_bp, url_prefix='/produtos')
+```
+Se precisar criar links dinâmicos usando *url_for()* para rotas de um Blueprint, lembre-se de referenciar o nome do Blueprint antes da função, separado por um ponto (ex: *url_for('usuarios.listar_usuarios')*).
+
+
